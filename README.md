@@ -9,7 +9,7 @@ SQLi Brute is a Python program, to enumerate and download files from the vulnera
 * Python 3.3 and up
 * SQL Map
 
-`$ pip install colorama`
+`$ pip3 install colorama`
 
 ## Usage
 
